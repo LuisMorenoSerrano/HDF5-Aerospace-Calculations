@@ -1,4 +1,12 @@
-# HDF5 Tests - Cálculos Masivos Aeroespaciales
+# 🚀 HDF5 Aerospace Massive Calculations
+
+![Fortran](https://img.shields.io/badge/Fortran-2008-734f96?style=flat-square&logo=fortran)
+![HDF5](https://img.shields.io/badge/HDF5-1.10+-blue?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.8+-3776ab?style=flat-square&logo=python)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Platform](https://img.shields.io/badge/Platform-Linux-orange?style=flat-square&logo=linux)
+
+> **High-performance Fortran + HDF5 framework for massive aerospace structural calculations with intelligent memory management and visualization**
 
 Este proyecto demuestra el uso eficiente de HDF5 con Fortran para cálculos masivos en ingeniería aeroespacial, incluyendo:
 
