@@ -1,0 +1,37 @@
+{
+    // Configuración para Modern Fortran extension
+    "fortran.fortls.path": "/home/lmoreno/.virtualenvs/general/bin/fortls",
+    "fortran.linter.compiler": "gfortran",
+    "fortran.linter.extraArgs": ["-I/usr/include/hdf5/serial"],
+
+    // Configuración directa de fortls (fallback)
+    "fortls.path": "/home/lmoreno/.virtualenvs/general/bin/fortls",
+    "fortls.fortranSyntax": true,
+    "fortls.hoverSignature": true,
+    "fortls.useSignatureHelp": true,
+    "fortls.variableHover": true,
+    "fortls.provideDiagnostics": true,
+    "fortls.maxLineLength": 132,
+    "fortls.maxCommentLineLength": 132,
+    "fortls.incDirs": [
+        "/usr/include/hdf5/serial",
+        "/usr/include/hdf5",
+        "/usr/lib/x86_64-linux-gnu/hdf5/serial",
+        "build",
+        "${workspaceFolder}/build"
+    ],
+    "fortls.modDirs": [
+        "/usr/include/hdf5/serial",
+        "/usr/include/hdf5",
+        "/usr/lib/x86_64-linux-gnu/hdf5/serial",
+        "build",
+        "${workspaceFolder}/build"
+    ],
+    "fortls.source_dirs": [
+        "src"
+    ],
+    "fortls.excl_paths": [],
+    "fortls.excl_suffixes": [".u2d", ".vfproj", ".dat"],
+    "fortls.lowercase_intrinsics": false,
+    "fortls.debug_log": false
+}

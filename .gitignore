@@ -1,0 +1,58 @@
+# Archivos compilados Fortran
+*.o
+*.mod
+*.smod
+*.a
+*.so
+*.exe
+
+# Directorios de build
+build/
+bin/
+
+# Archivos HDF5 grandes (pueden regenerarse)
+results/*.h5
+*.hdf5
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Archivos temporales
+*.tmp
+*~
+.#*
+#*#
+
+# Archivos de respaldo
+*.bak
+*.backup
+*.orig
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/settings.json.bak
+*.swp
+*.swo
+
+# Logs y debug
+*.log
+debug/
+log/
+
+# Archivos de configuración específicos del usuario
+.env
+.local
+
+# Archivos de datos grandes (opcional)
+data/*.h5
+data/*.hdf5
+
+# Mantener algunos archivos importantes
+!results/*.png
+!data/aerospace_examples.h5
