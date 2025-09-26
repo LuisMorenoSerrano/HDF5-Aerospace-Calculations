@@ -95,7 +95,9 @@ def create_test_hdf5(filename, size=60000):
 
     # Mostrar tamaño real del archivo
     file_size_mb = os.path.getsize(filename) / (1024**2)
-    print(f"   📦 Tamaño real archivo: {file_size_mb:.1f} MB (compresión ~{size*size*8/(1024**2)/file_size_mb:.1f}x)")
+    compression_ratio = size*size*8/(1024**2)/file_size_mb
+    print(f"   📦 Tamaño real archivo: {file_size_mb:.1f} MB "
+          f"(compresión ~{compression_ratio:.1f}x)")
 
 def create_small_test_hdf5(filename, size=5000):
     """Crear archivo HDF5 pequeño para pruebas rápidas"""

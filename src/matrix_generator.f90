@@ -7,8 +7,9 @@ program structural_matrix_generator
     implicit none
 
     ! Parámetros del problema aeroespacial
-    integer, parameter :: n_nodes = 10000      ! Nodos en la malla FEM (original)
-    integer, parameter :: n_dof = 6 * n_nodes  ! 6 DOF por nodo (3 traslación + 3 rotación)
+    integer, parameter :: n_nodes = 10000      ! Nodos en la malla FEM
+    integer, parameter :: n_dof = 6 * n_nodes  ! 6 DOF por nodo
+    ! (3 traslación + 3 rotación) = 60,000 DOF total
     integer, parameter :: bandwidth = 50       ! Ancho de banda típico    ! Variables
     real(8), allocatable :: stiffness_matrix(:,:)
     real(8), allocatable :: mass_matrix(:,:)
@@ -154,8 +155,10 @@ contains
 
         ! Simulación de carga de presión aerodinámica
         do i = 1, n
-            x = real(mod(i-1, int(sqrt(real(n_nodes))))) / sqrt(real(n_nodes))  ! Posición X normalizada
-            y = real((i-1) / int(sqrt(real(n_nodes)))) / sqrt(real(n_nodes))    ! Posición Y normalizada
+            ! Posición X normalizada
+            x = real(mod(i-1, int(sqrt(real(n_nodes))))) / sqrt(real(n_nodes))
+            ! Posición Y normalizada
+            y = real((i-1) / int(sqrt(real(n_nodes)))) / sqrt(real(n_nodes))
 
             ! Distribución de presión típica (gradiente + oscilación)
             pressure = 1000.0d0 * (1.0d0 + 0.5d0 * x + 0.3d0 * sin(10.0d0 * x) * cos(8.0d0 * y))
