@@ -131,15 +131,28 @@ def plot_matrix_structure(matrix: np.ndarray, title: str, subplot_pos: int, fig)
     else:
         matrix_plot = matrix
 
-    # Crear máscara de elementos no-cero (más eficiente)
+    # Crear máscara de elementos no-cero (adaptativo según el tipo de matriz)
     abs_matrix = np.abs(matrix_plot)
-    threshold = np.percentile(abs_matrix[abs_matrix > 0], 10) if np.any(abs_matrix > 0) else 0
+    if np.any(abs_matrix > 0):
+        # Para matrices diagonales o con pocos elementos, usar umbral muy bajo
+        max_val = np.max(abs_matrix)
+        if 'masa' in title.lower() or 'mass' in title.lower():
+            threshold = max_val * 1e-10  # Umbral muy bajo para matrices de masa
+        else:
+            threshold = np.percentile(abs_matrix[abs_matrix > 0], 5)  # Percentil más bajo
+    else:
+        threshold = 0
     nonzero_mask = abs_matrix > threshold
+
+    # Información de diagnóstico
+    n_nonzero = np.sum(nonzero_mask)
+    max_val = np.max(abs_matrix) if np.any(abs_matrix > 0) else 0
+    print(f"   🔍 {title}: {n_nonzero} elementos visibles, valor máx: {max_val:.2e}")
 
     # Visualizar
     ax.imshow(nonzero_mask, cmap='Blues', aspect='equal', origin='upper')
-    sparsity = 100 * (1 - np.sum(nonzero_mask) / nonzero_mask.size)
-    ax.set_title(f'{title}\nSparsity: {sparsity:.1f}%')
+    sparsity = 100 * (1 - n_nonzero / nonzero_mask.size)
+    ax.set_title(f'{title}\nSparsity: {sparsity:.1f}% ({n_nonzero} elementos)')
     ax.set_xlabel('Columna')
     ax.set_ylabel('Fila')
 
