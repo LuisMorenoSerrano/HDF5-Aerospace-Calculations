@@ -25,7 +25,24 @@
     "files.associations": {
         "*.f90": "FortranFreeForm",
         "*.F90": "FortranFreeForm"
-    }
+    },
+
+    // ==========================================
+    // CONFIGURACIÓN PYTHON ENVIRONMENT
+    // ==========================================
+
+    // Entorno virtual por defecto para el proyecto
+    "python.defaultInterpreterPath": "/home/lmoreno/.virtualenvs/general/bin/python",
+    "python.terminal.activateEnvironment": true,
+
+    // Terminal integrado con activación automática
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "bash",
+            "args": ["--init-file", "${workspaceFolder}/activate_env.sh"]
+        }
+    },
 
     // NOTA: Configuración detallada de fortls en archivo .fortls
     // según documentación oficial: https://fortls.fortran-lang.org/options.html

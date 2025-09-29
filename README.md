@@ -44,11 +44,26 @@ Este proyecto demuestra el uso eficiente de HDF5 con Fortran para cálculos masi
 # Configurar entorno (solo primera vez)
 ./scripts/setup_environment.sh
 
-# Activar entorno
+# Activar entorno automáticamente
 source activate_env.sh
 
 # Compilar todo
 make all
+```
+
+### 🐍 Entorno Virtual Automático
+
+El proyecto activa automáticamente el entorno virtual Python `general`:
+
+```bash
+# En VS Code: Terminal se activa automáticamente
+# En terminal manual:
+source activate_env.sh
+
+# Comandos rápidos disponibles:
+build          # make all
+test-quick     # make test-quick
+visualize      # python3 python/visualize_results.py --modal
 ```
 
 ### Test Completo
