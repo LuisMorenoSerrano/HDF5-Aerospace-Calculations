@@ -176,14 +176,25 @@ def estimate_bandwidth(matrix):
 
     return min(max_band, n)
 
-def plot_eigenvalue_analysis(stiffness, mass):
-    """Análisis de valores propios (modal analysis)"""
-    print("🔍 Realizando análisis modal...")
+def modal_analysis(stiffness, mass):
+    """Análisis de valores propios mejorado (modal analysis)"""
+    print("🔍 Realizando análisis modal avanzado...")
 
-    # Para matrices grandes, usar submatriz
+    # Estrategia inteligente para matrices grandes
     n = stiffness.shape[0]
-    if n > 1000:
-        idx = slice(0, 500)  # Primeros 500 DOF
+    print(f"   📊 Tamaño matriz original: {n}×{n}")
+
+    if n > 2000:
+        # Selección estratificada: cada 12 DOF (2 nodos completos)
+        # Esto mantiene la estructura física del problema
+        step = max(12, n // 1500)  # Mantener ~1500 DOF máximo
+        idx = np.arange(0, n, step)
+        print(f"   🎯 Submuestreo estratificado: cada {step} DOF → {len(idx)} DOF")
+        K = stiffness[np.ix_(idx, idx)]
+        M = mass[np.ix_(idx, idx)]
+    elif n > 1000:
+        # Para tamaños medios, usar más DOF
+        idx = slice(0, min(1000, n))
         K = stiffness[idx, idx]
         M = mass[idx, idx]
     else:
@@ -191,46 +202,133 @@ def plot_eigenvalue_analysis(stiffness, mass):
         M = mass
 
     try:
+        # Regularización para evitar singularidad
+        reg_factor = 1e-12 * np.max(np.diag(K))
+        K_reg = K + reg_factor * np.eye(K.shape[0])
+
+        # Verificar disponibilidad de SciPy
+        if csr_matrix is None or eigsh is None:
+            print("   ⚠️  SciPy no disponible. Instala con: pip install scipy")
+            return None, None
+
         # Convertir a sparse para eficiencia
-        K_sparse = csr_matrix(K)
+        K_sparse = csr_matrix(K_reg)
         M_sparse = csr_matrix(M)
 
-        # Calcular primeros modos
-        eigenvals, eigenvecs = eigsh(K_sparse, k=6, M=M_sparse, which='SM')
-        frequencies = np.sqrt(np.real(eigenvals)) / (2 * np.pi)
+        # Calcular más modos para mejor separación
+        k_modes = min(12, K.shape[0] - 2)
+        print(f"   🧮 Calculando {k_modes} modos propios...")
 
-        _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        eigenvals, eigenvecs = eigsh(K_sparse, k=k_modes, M=M_sparse, which='SM', sigma=0.0,
+                                     maxiter=1000)  # Filtrar valores propios válidos (positivos)
+        valid_idx = eigenvals > 0
+        eigenvals = eigenvals[valid_idx]
+        eigenvecs = eigenvecs[:, valid_idx]
 
-        # Frecuencias naturales
-        ax1.bar(range(1, len(frequencies)+1), frequencies, color='skyblue', edgecolor='navy')
+        frequencies = np.sqrt(eigenvals) / (2 * np.pi)
+
+        # Ordenar por frecuencia
+        sort_idx = np.argsort(frequencies)
+        frequencies = frequencies[sort_idx]
+        eigenvecs = eigenvecs[:, sort_idx]
+
+        print(f"   ✅ {len(frequencies)} modos válidos encontrados")
+
+        # Crear figura mejorada con 3 subplots
+        plt.figure(figsize=(16, 10))
+
+        # 1. Frecuencias naturales con escala logarítmica si hay gran dispersión
+        ax1 = plt.subplot(2, 2, 1)
+        bar_objects = ax1.bar(range(1, len(frequencies)+1), frequencies,
+                      color='lightcoral', edgecolor='darkred', alpha=0.7)
+
+        # Añadir valores encima de las barras
+        for bar_obj, freq in zip(bar_objects, frequencies):
+            height = bar_obj.get_height()
+            ax1.text(bar_obj.get_x() + bar_obj.get_width()/2., height,
+                    f'{freq:.1f}', ha='center', va='bottom', fontsize=9)
+
         ax1.set_xlabel('Modo')
         ax1.set_ylabel('Frecuencia (Hz)')
-        ax1.set_title('Frecuencias Naturales')
+        ax1.set_title(f'Frecuencias Naturales ({len(frequencies)} modos)')
         ax1.grid(True, alpha=0.3)
 
-        # Formas modales (primeros 3 modos)
-        colors = ['red', 'blue', 'green']
-        for i in range(min(3, eigenvecs.shape[1])):
-            ax2.plot(eigenvecs[:, i], label=f'Modo {i+1} ({frequencies[i]:.1f} Hz)',
-                    color=colors[i], linewidth=2)
+        # Usar escala log si hay gran dispersión
+        if len(frequencies) > 1 and frequencies[-1] / frequencies[0] > 10:
+            ax1.set_yscale('log')
+            ax1.set_ylabel('Frecuencia (Hz) - Escala Log')
 
-        ax2.set_xlabel('DOF')
-        ax2.set_ylabel('Amplitud Modal')
-        ax2.set_title('Formas Modales')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
+        # 2. Diferencias entre frecuencias consecutivas
+        ax2 = plt.subplot(2, 2, 2)
+        if len(frequencies) > 1:
+            freq_diffs = np.diff(frequencies)
+            ax2.bar(range(1, len(freq_diffs)+1), freq_diffs,
+                   color='lightblue', edgecolor='navy', alpha=0.7)
+            ax2.set_xlabel('Entre Modos')
+            ax2.set_ylabel('Diferencia Freq. (Hz)')
+            ax2.set_title('Separación entre Modos')
+            ax2.grid(True, alpha=0.3)
+
+            # Mostrar estadísticas
+            mean_diff = float(np.mean(freq_diffs))
+            ax2.axhline(mean_diff, color='red', linestyle='--',
+                       label=f'Media: {mean_diff:.2f} Hz')
+            ax2.legend()        # 3. Formas modales principales (primeros 4 modos)
+        ax3 = plt.subplot(2, 2, 3)
+        colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown']
+        for i in range(min(4, eigenvecs.shape[1])):
+            # Normalizar forma modal
+            mode_shape = eigenvecs[:, i]
+            mode_shape = mode_shape / np.max(np.abs(mode_shape))
+
+            ax3.plot(mode_shape, label=f'Modo {i+1} ({frequencies[i]:.1f} Hz)',
+                    color=colors[i % len(colors)], linewidth=2, alpha=0.8)
+
+        ax3.set_xlabel('DOF')
+        ax3.set_ylabel('Amplitud Modal Normalizada')
+        ax3.set_title('Formas Modales Principales')
+        ax3.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax3.grid(True, alpha=0.3)
+
+        # 4. Participación modal (energía por modo)
+        ax4 = plt.subplot(2, 2, 4)
+        modal_masses = np.zeros(len(frequencies))
+        for i in range(len(frequencies)):
+            phi = eigenvecs[:, i]
+            modal_masses[i] = phi.T @ M @ phi
+
+        # Normalizar participación
+        participation = modal_masses / np.sum(modal_masses) * 100
+
+        ax4.bar(range(1, len(participation)+1), participation,
+               color='lightgreen', edgecolor='darkgreen', alpha=0.7)
+        ax4.set_xlabel('Modo')
+        ax4.set_ylabel('Participación Modal (%)')
+        ax4.set_title('Participación de Masa Modal')
+        ax4.grid(True, alpha=0.3)
 
         plt.tight_layout()
         plt.savefig('results/modal_analysis.png', dpi=300, bbox_inches='tight')
         print("   ✅ Análisis modal guardado en: results/modal_analysis.png")
 
-        # Imprimir resumen
-        print("📈 Frecuencias naturales:")
+        # Resumen detallado
+        print("\n📈 RESUMEN ANÁLISIS MODAL:")
+        print(f"   🔢 Modos calculados: {len(frequencies)}")
+        print(f"   📊 Rango frecuencias: {frequencies[0]:.2f} - {frequencies[-1]:.2f} Hz")
+        if len(frequencies) > 1:
+            print(f"   📏 Separación promedio: {np.mean(np.diff(frequencies)):.2f} Hz")
+            print(f"   📈 Factor dispersión: {frequencies[-1]/frequencies[0]:.1f}x")
+
+        print("\n🎵 Frecuencias por modo:")
         for i, freq in enumerate(frequencies):
-            print(f"   Modo {i+1}: {freq:.2f} Hz")
+            participation_pct = participation[i] if i < len(participation) else 0
+            print(f"   Modo {i+1:2d}: {freq:7.2f} Hz  (Participación: {participation_pct:5.1f}%)")
+
+        return frequencies, eigenvecs
 
     except (ImportError, ValueError, RuntimeError) as e:
         print(f"⚠️  Error en análisis modal: {e}")
+        return None, None
 
 def plot_response_analysis(force, displacement):
     """Análisis de la respuesta estructural"""
@@ -414,7 +512,7 @@ def main():
         # Análisis modal
         if args.modal and 'stiffness' in data and 'mass' in data:
             if eigsh is not None:
-                plot_eigenvalue_analysis(data['stiffness'], data['mass'])
+                modal_analysis(data['stiffness'], data['mass'])
             else:
                 print("   ⚠️  Análisis modal omitido (scipy no disponible)")
 

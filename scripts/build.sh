@@ -90,15 +90,25 @@ compile_program() {
     echo "   Origen: $src_file"
     echo "   Ejecutable: build/$exe_name"
 
-    # Compilar módulo HDF5_utils primero si es necesario
+    # Compilar módulos necesarios
     if [ ! -f "build/hdf5_utils.mod" ]; then
         echo "   📚 Compilando módulo hdf5_utils..."
         gfortran $FFLAGS $HDF5_FLAGS -J build -c src/hdf5_utils.f90 -o build/hdf5_utils.o
     fi
 
+    if [ ! -f "build/config_reader.mod" ]; then
+        echo "   📚 Compilando módulo config_reader..."
+        gfortran $FFLAGS -J build -c src/config_reader.f90 -o build/config_reader.o
+    fi
+
     # Compilar programa principal
+    OBJECTS="build/hdf5_utils.o"
+    if [ -f "build/config_reader.o" ]; then
+        OBJECTS="$OBJECTS build/config_reader.o"
+    fi
+
     gfortran $FFLAGS $HDF5_FLAGS -J build -I build \
-        build/hdf5_utils.o src/$src_file -o build/$exe_name
+        $OBJECTS src/$src_file -o build/$exe_name
 
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}   ✅ Compilación exitosa${NC}"

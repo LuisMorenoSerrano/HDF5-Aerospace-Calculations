@@ -1,37 +1,32 @@
 {
-    // Configuración para Modern Fortran extension
+    // ==========================================
+    // CONFIGURACIÓN MODERN FORTRAN EXTENSION
+    // ==========================================
+
+    // Ruta del ejecutable fortls
     "fortran.fortls.path": "/home/lmoreno/.virtualenvs/general/bin/fortls",
+
+    // Directorios principales para Modern Fortran extension
+    "fortran.fortls.directories": [
+        "src/**",
+        "build/**",
+        "/usr/include/hdf5/serial/**"
+    ],
+
+    // Compilador para linting (alternativo a fortls)
     "fortran.linter.compiler": "gfortran",
     "fortran.linter.extraArgs": ["-I/usr/include/hdf5/serial"],
 
-    // Configuración directa de fortls (fallback)
-    "fortls.path": "/home/lmoreno/.virtualenvs/general/bin/fortls",
-    "fortls.fortranSyntax": true,
-    "fortls.hoverSignature": true,
-    "fortls.useSignatureHelp": true,
-    "fortls.variableHover": true,
-    "fortls.provideDiagnostics": true,
-    "fortls.maxLineLength": 132,
-    "fortls.maxCommentLineLength": 132,
-    "fortls.incDirs": [
-        "/usr/include/hdf5/serial",
-        "/usr/include/hdf5",
-        "/usr/lib/x86_64-linux-gnu/hdf5/serial",
-        "build",
-        "${workspaceFolder}/build"
-    ],
-    "fortls.modDirs": [
-        "/usr/include/hdf5/serial",
-        "/usr/include/hdf5",
-        "/usr/lib/x86_64-linux-gnu/hdf5/serial",
-        "build",
-        "${workspaceFolder}/build"
-    ],
-    "fortls.source_dirs": [
-        "src"
-    ],
-    "fortls.excl_paths": [],
-    "fortls.excl_suffixes": [".u2d", ".vfproj", ".dat"],
-    "fortls.lowercase_intrinsics": false,
-    "fortls.debug_log": false
+    // ==========================================
+    // CONFIGURACIÓN DE WORKSPACE
+    // ==========================================
+
+    // Asociaciones de archivos
+    "files.associations": {
+        "*.f90": "FortranFreeForm",
+        "*.F90": "FortranFreeForm"
+    }
+
+    // NOTA: Configuración detallada de fortls en archivo .fortls
+    // según documentación oficial: https://fortls.fortran-lang.org/options.html
 }

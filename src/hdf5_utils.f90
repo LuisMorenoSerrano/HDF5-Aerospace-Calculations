@@ -3,7 +3,7 @@
 ! Autor: Generado por AI para cálculos aeroespaciales masivos
 ! =============================================================================
 module hdf5_utils
-    use hdf5  ! fortls: ignore-line
+    use hdf5
     implicit none
 
     private

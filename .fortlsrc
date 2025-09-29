@@ -1,9 +1,10 @@
 {
+  "incremental_sync": true,
+  "hover_signature": true,
+  "use_signature_help": true,
   "source_dirs": ["src"],
-  "include_dirs": ["/usr/include/hdf5/serial", "build"],
-  "mod_dirs": ["/usr/include/hdf5/serial", "build"],
-  "lowercase_intrinsics": false,
-  "debug_log": false,
-  "provide_diagnostics": true,
-  "excl_suffixes": [".u2d", ".vfproj", ".dat", ".o"]
+  "include_dirs": [
+    "/usr/include/hdf5/serial"
+  ],
+  "disable_diagnostics": true
 }

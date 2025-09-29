@@ -4,24 +4,16 @@
 ! =============================================================================
 program structural_matrix_generator
     use hdf5_utils
+    use config_reader
     implicit none
 
-    ! Parámetros del problema aeroespacial
-    integer, parameter :: n_nodes = 10000      ! Nodos en la malla FEM
-    integer, parameter :: n_dof = 6 * n_nodes  ! 6 DOF por nodo
-    ! (3 traslación + 3 rotación) = 60,000 DOF total
-    integer, parameter :: bandwidth = 50       ! Ancho de banda típico    ! Variables
+    ! Variables
+    type(simulation_config) :: config
     real(8), allocatable :: stiffness_matrix(:,:)
     real(8), allocatable :: mass_matrix(:,:)
     real(8), allocatable :: force_vector(:)
     real(8), allocatable :: displacement(:)
     integer(HID_T) :: file_id
-
-    ! Propiedades del material (Aluminio aeroespacial)
-    real(8), parameter :: young_modulus = 70.0e9    ! Pa
-    real(8), parameter :: poisson_ratio = 0.33
-    real(8), parameter :: density = 2700.0          ! kg/m³
-    real(8), parameter :: thickness = 0.002         ! m (2mm típico fuselaje)
 
     ! Información de timing
     real :: start_time, end_time
@@ -29,25 +21,23 @@ program structural_matrix_generator
     write(*,*) '=============================================='
     write(*,*) '   GENERADOR DE MATRICES AEROESPACIALES'
     write(*,*) '=============================================='
-    write(*,*) 'Nodos:           ', n_nodes
-    write(*,*) 'DOF totales:     ', n_dof
-    write(*,*) 'Tamaño matriz:   ', n_dof, 'x', n_dof
-    write(*,*) 'Memoria aprox:   ', (real(n_dof,8)**2 * 8.0d0) / (1024.0d0**3), ' GB'
-    write(*,*) '=============================================='
+
+    ! Leer configuración
+    call read_config_file('config/simulation_params.conf', config)
 
     ! Inicializar HDF5
     call init_hdf5()
 
     ! Crear archivo de salida
-    call create_hdf5_file('results/structural_matrices.h5', file_id)
+    call create_hdf5_file(config%output_file, file_id)
 
     ! Generar matrices
     call cpu_time(start_time)
     write(*,*) 'Generando matrices...'
 
-    call generate_stiffness_matrix(stiffness_matrix, n_dof, young_modulus, poisson_ratio)
-    call generate_mass_matrix(mass_matrix, n_dof, density, thickness)
-    call generate_force_vector(force_vector, n_dof)
+    call generate_stiffness_matrix(stiffness_matrix, config)
+    call generate_mass_matrix(mass_matrix, config)
+    call generate_force_vector(force_vector, config%n_dof)
 
     call cpu_time(end_time)
     write(*,'(A,F8.2,A)') ' Tiempo generación: ', end_time - start_time, ' segundos'
@@ -86,29 +76,51 @@ contains
     ! -------------------------------------------------------------------------
     ! Generar matriz de rigidez banda (simulando FEM aeroespacial)
     ! -------------------------------------------------------------------------
-    subroutine generate_stiffness_matrix(K, n, E, nu)
+    subroutine generate_stiffness_matrix(K, cfg)
         real(8), allocatable, intent(out) :: K(:,:)
-        integer, intent(in) :: n
-        real(8), intent(in) :: E, nu
+        type(simulation_config), intent(in) :: cfg
 
-        integer :: i, j, band_width
-        real(8) :: G, k_local
+        integer :: i, j, band_width, n
+        real(8) :: G, k_local, E, nu
+
+        n = cfg%n_dof
+        E = cfg%young_modulus
+        nu = cfg%poisson_ratio
 
         allocate(K(n, n))
         K = 0.0d0
 
         G = E / (2.0d0 * (1.0d0 + nu))  ! Módulo de cortante
-        band_width = min(bandwidth, n)
+        band_width = min(cfg%bandwidth, n)
 
-        ! Generar matriz banda simulando conectividad FEM
+        ! Generar estructura aeroespacial heterogénea con diferentes zonas
         do i = 1, n
-            ! Diagonal principal (rigidez del elemento)
-            k_local = E * (1.0d0 + 0.1d0 * sin(real(i) / 1000.0d0))  ! Variación material
+            ! Crear zonas con diferentes propiedades (fuselaje, alas, cola)
+            if (i <= n/3) then
+                ! Zona fuselaje: más rígida
+                k_local = E * (1.0d0 + 0.5d0 * cos(real(i) * 6.28d0 / (n/3)))
+            else if (i <= 2*n/3) then
+                ! Zona alas: flexible con variación
+                k_local = E * 0.3d0 * (1.0d0 + 0.8d0 * sin(real(i-n/3) * 12.56d0 / (n/3)))
+            else
+                ! Zona cola: intermedia con resonadores
+                k_local = E * 0.6d0 * (1.0d0 + 0.3d0 * sin(real(i-2*n/3) * 25.12d0 / (n/3)))
+            end if
+
             K(i,i) = k_local
 
-            ! Elementos fuera de la diagonal (acoplamiento)
-            do j = i+1, min(i + band_width, n)  ! j se usa aquí
-                K(i,j) = -k_local * exp(-real(j-i)/10.0d0) * 0.3d0
+            ! Elementos fuera de la diagonal con conectividad variable
+            do j = i+1, min(i + band_width, n)
+                if (i <= n/3 .and. j <= n/3) then
+                    ! Fuselaje: alta conectividad
+                    K(i,j) = -k_local * exp(-real(j-i)/5.0d0) * 0.6d0
+                else if (i > n/3 .and. j > n/3) then
+                    ! Alas/cola: menor conectividad
+                    K(i,j) = -k_local * exp(-real(j-i)/15.0d0) * 0.2d0
+                else
+                    ! Transición entre zonas
+                    K(i,j) = -k_local * exp(-real(j-i)/20.0d0) * 0.1d0
+                end if
                 K(j,i) = K(i,j)  ! Simetría
             end do
         end do
@@ -117,27 +129,52 @@ contains
     ! -------------------------------------------------------------------------
     ! Generar matriz de masa
     ! -------------------------------------------------------------------------
-    subroutine generate_mass_matrix(M, n, rho, t)
+    subroutine generate_mass_matrix(M, cfg)
         real(8), allocatable, intent(out) :: M(:,:)
-        integer, intent(in) :: n
-        real(8), intent(in) :: rho, t
+        type(simulation_config), intent(in) :: cfg
 
-        integer :: i
-        real(8) :: m_local, area_element
+        integer :: i, n
+        real(8) :: m_local, area_element, rho, t
+
+        n = cfg%n_dof
+        rho = cfg%density
+        t = cfg%thickness
 
         allocate(M(n, n))
         M = 0.0d0
 
-        area_element = 0.01d0  ! m² por elemento (1cm²)
+        area_element = 0.01d0  ! m² por elemento base (1cm²)
 
-        ! Matriz de masa diagonal (masa concentrada)
+        ! Matriz de masa con distribución variable por zonas
         do i = 1, n
-            m_local = rho * t * area_element
+            if (i <= n/3) then
+                ! Fuselaje: mayor masa (equipos, pasajeros)
+                m_local = rho * t * area_element * (2.0d0 + 0.5d0 * sin(real(i) * 6.28d0 / (n/3)))
+            else if (i <= 2*n/3) then
+                ! Alas: masa variable (combustible, motores)
+                m_local = rho * t * area_element * (0.8d0 + 1.2d0 * cos(real(i-n/3) * 6.28d0 / (n/3)))
+            else
+                ! Cola: menor masa
+                m_local = rho * t * area_element * (0.3d0 + 0.2d0 * cos(real(i-2*n/3) * 12.56d0 / (n/3)))
+            end if
+
             M(i,i) = m_local
 
-            ! Pequeño acoplamiento inercial
-            if (i < n) M(i,i+1) = m_local * 0.05d0
-            if (i > 1) M(i,i-1) = m_local * 0.05d0
+            ! Acoplamiento inercial variable por zonas
+            if (i < n) then
+                if (i <= n/3) then
+                    M(i,i+1) = m_local * 0.08d0  ! Mayor acoplamiento en fuselaje
+                else
+                    M(i,i+1) = m_local * 0.03d0  ! Menor en alas/cola
+                end if
+            end if
+            if (i > 1) then
+                if (i <= n/3) then
+                    M(i,i-1) = m_local * 0.08d0
+                else
+                    M(i,i-1) = m_local * 0.03d0
+                end if
+            end if
         end do
     end subroutine generate_mass_matrix
 
@@ -148,17 +185,20 @@ contains
         real(8), allocatable, intent(out) :: F(:)
         integer, intent(in) :: n
 
-        integer :: i
+        integer :: i, n_nodes_equiv
         real(8) :: pressure, x, y
 
         allocate(F(n))
 
+        ! Calcular número de nodos equivalente para la geometría
+        n_nodes_equiv = n / 6  ! 6 DOF por nodo
+
         ! Simulación de carga de presión aerodinámica
         do i = 1, n
             ! Posición X normalizada
-            x = real(mod(i-1, int(sqrt(real(n_nodes))))) / sqrt(real(n_nodes))
+            x = real(mod(i-1, int(sqrt(real(n_nodes_equiv))))) / sqrt(real(n_nodes_equiv))
             ! Posición Y normalizada
-            y = real((i-1) / int(sqrt(real(n_nodes)))) / sqrt(real(n_nodes))
+            y = real((i-1) / int(sqrt(real(n_nodes_equiv)))) / sqrt(real(n_nodes_equiv))
 
             ! Distribución de presión típica (gradiente + oscilación)
             pressure = 1000.0d0 * (1.0d0 + 0.5d0 * x + 0.3d0 * sin(10.0d0 * x) * cos(8.0d0 * y))

@@ -1,0 +1,12 @@
+{
+    "include": ["python"],
+    "exclude": [
+        "build",
+        "results",
+        "**/__pycache__"
+    ],
+    "venv": "/home/lmoreno/.virtualenvs/general",
+    "pythonVersion": "3.12",
+    "typeCheckingMode": "basic",
+    "useLibraryCodeForTypes": true
+}

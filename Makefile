@@ -19,12 +19,12 @@ PYTHONDIR = python
 RESULTSDIR = results
 
 # Archivos fuente
-SOURCES = hdf5_utils.f90 matrix_generator.f90 data_analyzer.f90 data_analyzer_efficient.f90
+SOURCES = hdf5_utils.f90 config_reader.f90 matrix_generator.f90 data_analyzer.f90
 OBJECTS = $(patsubst %.f90,$(BUILDDIR)/%.o,$(SOURCES))
-MODULES = $(BUILDDIR)/hdf5_utils.mod
+MODULES = $(BUILDDIR)/hdf5_utils.mod $(BUILDDIR)/config_reader.mod
 
 # Ejecutables
-EXECUTABLES = $(BUILDDIR)/matrix_generator $(BUILDDIR)/data_analyzer $(BUILDDIR)/data_analyzer_efficient
+EXECUTABLES = $(BUILDDIR)/matrix_generator $(BUILDDIR)/data_analyzer
 
 # Regla por defecto
 .PHONY: all clean debug install test help
@@ -42,21 +42,20 @@ $(BUILDDIR)/hdf5_utils.o $(BUILDDIR)/hdf5_utils.mod: $(SRCDIR)/hdf5_utils.f90 | 
 	@echo "🔨 Compilando módulo hdf5_utils..."
 	$(FC) $(FFLAGS) $(HDF5_CFLAGS) -J$(MODDIR) -c $< -o $@
 
-# Compilar generador de matrices
-$(BUILDDIR)/matrix_generator: $(SRCDIR)/matrix_generator.f90 $(BUILDDIR)/hdf5_utils.o | directories
+# Compilar módulo config_reader
+$(BUILDDIR)/config_reader.o $(BUILDDIR)/config_reader.mod: $(SRCDIR)/config_reader.f90 | directories
+	@echo "🔨 Compilando módulo config_reader..."
+	$(FC) $(FFLAGS) -J$(MODDIR) -c $< -o $@
+
+# Compilar generador de matrices (depende de hdf5_utils y config_reader)
+$(BUILDDIR)/matrix_generator: $(SRCDIR)/matrix_generator.f90 $(BUILDDIR)/hdf5_utils.o $(BUILDDIR)/config_reader.o | directories
 	@echo "🔨 Compilando matrix_generator..."
 	$(FC) $(FFLAGS) $(HDF5_CFLAGS) -I$(MODDIR) -J$(MODDIR) \
-		$(BUILDDIR)/hdf5_utils.o $< -o $@ $(HDF5_LIBS)
+		$(BUILDDIR)/hdf5_utils.o $(BUILDDIR)/config_reader.o $< -o $@ $(HDF5_LIBS)
 
 # Compilar analizador de datos
 $(BUILDDIR)/data_analyzer: $(SRCDIR)/data_analyzer.f90 $(BUILDDIR)/hdf5_utils.o | directories
 	@echo "🔨 Compilando data_analyzer..."
-	$(FC) $(FFLAGS) $(HDF5_CFLAGS) -I$(MODDIR) -J$(MODDIR) \
-		$(BUILDDIR)/hdf5_utils.o $< -o $@ $(HDF5_LIBS)
-
-# Compilar analizador de datos eficiente
-$(BUILDDIR)/data_analyzer_efficient: $(SRCDIR)/data_analyzer_efficient.f90 $(BUILDDIR)/hdf5_utils.o | directories
-	@echo "🔨 Compilando data_analyzer_efficient..."
 	$(FC) $(FFLAGS) $(HDF5_CFLAGS) -I$(MODDIR) -J$(MODDIR) \
 		$(BUILDDIR)/hdf5_utils.o $< -o $@ $(HDF5_LIBS)
 
@@ -85,7 +84,7 @@ test: all install
 test-quick: all
 	@echo "⚡ Test rápido..."
 	./$(BUILDDIR)/matrix_generator
-	./$(BUILDDIR)/data_analyzer_efficient
+	./$(BUILDDIR)/data_analyzer
 
 # Benchmark de rendimiento
 benchmark: all
