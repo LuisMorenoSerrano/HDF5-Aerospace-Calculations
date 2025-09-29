@@ -33,6 +33,9 @@ module config_reader
         character(len=200) :: output_file = "results/structural_matrices.h5"
         integer :: compression_level = 6
 
+        ! Configuración de paralelización
+        integer :: num_threads = 4
+
         ! Propiedades calculadas
         integer :: n_dof = 0
     end type simulation_config
@@ -134,6 +137,8 @@ contains
             end if
         case ('compression_level')
             read(value, *) config%compression_level
+        case ('num_threads')
+            read(value, *) config%num_threads
         end select
     end subroutine process_parameter
 
@@ -153,6 +158,7 @@ contains
         write(*,*) 'Módulo Young:       ', config%young_modulus, ' Pa'
         write(*,*) 'Densidad:           ', config%density, ' kg/m³'
         write(*,*) 'Archivo salida:     ', trim(config%output_file)
+        write(*,*) 'Threads OpenMP:     ', config%num_threads
         write(*,*) 'Memoria aprox:      ', (real(config%n_dof,8)**2 * 8.0d0) / (1024.0d0**3), ' GB'
         write(*,*) '=============================================='
     end subroutine print_config

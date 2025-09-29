@@ -5,6 +5,7 @@
 # Configuración del compilador
 FC = gfortran
 FFLAGS = -O3 -ffast-math -march=native -Wall -Wextra -std=f2008
+OPENMP_FLAGS = -fopenmp
 DEBUG_FLAGS = -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow
 
 # Detectar HDF5 (usando versión serial de Ubuntu)
@@ -25,13 +26,19 @@ MODULES = $(BUILDDIR)/hdf5_utils.mod $(BUILDDIR)/config_reader.mod
 
 # Ejecutables
 EXECUTABLES = $(BUILDDIR)/matrix_generator $(BUILDDIR)/data_analyzer
+EXECUTABLES_OMP = $(BUILDDIR)/matrix_generator_omp $(BUILDDIR)/data_analyzer_omp
 
 # Regla por defecto
-.PHONY: all clean debug install test help
+.PHONY: all clean debug install test help openmp
 
 all: directories $(EXECUTABLES)
 	@echo "✅ Compilación completa"
 	@echo "Ejecuta: make test"
+
+# Versión con OpenMP
+openmp: directories $(EXECUTABLES_OMP)
+	@echo "✅ Compilación OpenMP completa"
+	@echo "Ejecuta: ./build/matrix_generator_omp"
 
 # Crear directorios
 directories:
@@ -57,6 +64,22 @@ $(BUILDDIR)/matrix_generator: $(SRCDIR)/matrix_generator.f90 $(BUILDDIR)/hdf5_ut
 $(BUILDDIR)/data_analyzer: $(SRCDIR)/data_analyzer.f90 $(BUILDDIR)/hdf5_utils.o | directories
 	@echo "🔨 Compilando data_analyzer..."
 	$(FC) $(FFLAGS) $(HDF5_CFLAGS) -I$(MODDIR) -J$(MODDIR) \
+		$(BUILDDIR)/hdf5_utils.o $< -o $@ $(HDF5_LIBS)
+
+# =====================================================================
+# Compilación con OpenMP
+# =====================================================================
+
+# Compilar generador de matrices con OpenMP
+$(BUILDDIR)/matrix_generator_omp: $(SRCDIR)/matrix_generator.f90 $(BUILDDIR)/hdf5_utils.o $(BUILDDIR)/config_reader.o | directories
+	@echo "🔨 Compilando matrix_generator con OpenMP..."
+	$(FC) $(FFLAGS) $(OPENMP_FLAGS) $(HDF5_CFLAGS) -I$(MODDIR) -J$(MODDIR) \
+		$(BUILDDIR)/hdf5_utils.o $(BUILDDIR)/config_reader.o $< -o $@ $(HDF5_LIBS)
+
+# Compilar analizador de datos con OpenMP
+$(BUILDDIR)/data_analyzer_omp: $(SRCDIR)/data_analyzer.f90 $(BUILDDIR)/hdf5_utils.o | directories
+	@echo "🔨 Compilando data_analyzer con OpenMP..."
+	$(FC) $(FFLAGS) $(OPENMP_FLAGS) $(HDF5_CFLAGS) -I$(MODDIR) -J$(MODDIR) \
 		$(BUILDDIR)/hdf5_utils.o $< -o $@ $(HDF5_LIBS)
 
 # Compilación con debug

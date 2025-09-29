@@ -5,6 +5,7 @@
 program structural_matrix_generator
     use hdf5_utils
     use config_reader
+    !$ use omp_lib
     implicit none
 
     ! Variables
@@ -24,6 +25,12 @@ program structural_matrix_generator
 
     ! Leer configuración
     call read_config_file('config/simulation_params.conf', config)
+
+    ! Configurar OpenMP
+    !$ if (config%num_threads > 0) then
+    !$     call omp_set_num_threads(config%num_threads)
+    !$ end if
+    !$ write(*,'(A,I0,A,I0,A)') ' OpenMP: ', omp_get_max_threads(), ' threads de ', omp_get_num_procs(), ' disponibles'
 
     ! Inicializar HDF5
     call init_hdf5()
@@ -94,6 +101,7 @@ contains
         band_width = min(cfg%bandwidth, n)
 
         ! Generar estructura aeroespacial heterogénea con diferentes zonas
+        !$OMP PARALLEL DO PRIVATE(j, k_local) SCHEDULE(DYNAMIC)
         do i = 1, n
             ! Crear zonas con diferentes propiedades (fuselaje, alas, cola)
             if (i <= n/3) then
@@ -124,6 +132,7 @@ contains
                 K(j,i) = K(i,j)  ! Simetría
             end do
         end do
+        !$OMP END PARALLEL DO
     end subroutine generate_stiffness_matrix
 
     ! -------------------------------------------------------------------------
@@ -146,6 +155,7 @@ contains
         area_element = 0.01d0  ! m² por elemento base (1cm²)
 
         ! Matriz de masa con distribución variable por zonas
+        !$OMP PARALLEL DO PRIVATE(m_local) SCHEDULE(DYNAMIC)
         do i = 1, n
             if (i <= n/3) then
                 ! Fuselaje: mayor masa (equipos, pasajeros)
@@ -176,6 +186,7 @@ contains
                 end if
             end if
         end do
+        !$OMP END PARALLEL DO
     end subroutine generate_mass_matrix
 
     ! -------------------------------------------------------------------------
@@ -194,6 +205,7 @@ contains
         n_nodes_equiv = n / 6  ! 6 DOF por nodo
 
         ! Simulación de carga de presión aerodinámica
+        !$OMP PARALLEL DO PRIVATE(x, y, pressure) SCHEDULE(STATIC)
         do i = 1, n
             ! Posición X normalizada
             x = real(mod(i-1, int(sqrt(real(n_nodes_equiv))))) / sqrt(real(n_nodes_equiv))
@@ -204,6 +216,7 @@ contains
             pressure = 1000.0d0 * (1.0d0 + 0.5d0 * x + 0.3d0 * sin(10.0d0 * x) * cos(8.0d0 * y))
             F(i) = pressure * 0.01d0  ! Fuerza por nodo
         end do
+        !$OMP END PARALLEL DO
     end subroutine generate_force_vector
 
     ! -------------------------------------------------------------------------
