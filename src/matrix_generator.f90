@@ -15,6 +15,8 @@ program structural_matrix_generator
     real(8), allocatable :: force_vector(:)
     real(8), allocatable :: displacement(:)
     integer(HID_T) :: file_id
+    logical :: benchmark_mode = .false.
+    character(len=255) :: arg
 
     ! Información de timing
     real :: start_time, end_time
@@ -22,6 +24,15 @@ program structural_matrix_generator
     write(*,*) '=============================================='
     write(*,*) '   GENERADOR DE MATRICES AEROESPACIALES'
     write(*,*) '=============================================='
+
+    ! Verificar argumentos de línea de comandos
+    if (command_argument_count() > 0) then
+        call get_command_argument(1, arg)
+        if (trim(arg) == '--benchmark') then
+            benchmark_mode = .true.
+            write(*,*) '🚀 MODO BENCHMARK: Solo generación (sin I/O)'
+        end if
+    end if
 
     ! Leer configuración
     call read_config_file('config/simulation_params.conf', config)
@@ -32,11 +43,11 @@ program structural_matrix_generator
     !$ end if
     !$ write(*,'(A,I0,A,I0,A)') ' OpenMP: ', omp_get_max_threads(), ' threads de ', omp_get_num_procs(), ' disponibles'
 
-    ! Inicializar HDF5
-    call init_hdf5()
-
-    ! Crear archivo de salida
-    call create_hdf5_file(config%output_file, file_id)
+    ! Inicializar HDF5 solo si no es modo benchmark
+    if (.not. benchmark_mode) then
+        call init_hdf5()
+        call create_hdf5_file(config%output_file, file_id)
+    end if
 
     ! Generar matrices
     call cpu_time(start_time)
@@ -48,6 +59,15 @@ program structural_matrix_generator
 
     call cpu_time(end_time)
     write(*,'(A,F8.2,A)') ' Tiempo generación: ', end_time - start_time, ' segundos'
+
+    ! Si es modo benchmark, terminar aquí
+    if (benchmark_mode) then
+        write(*,*) '=============================================='  
+        write(*,*) '🚀 BENCHMARK COMPLETADO'
+        write(*,'(A,F8.2,A)') ' Tiempo total generación: ', end_time - start_time, ' segundos'
+        write(*,*) '=============================================='
+        stop
+    end if
 
     ! Guardar en HDF5
     call cpu_time(start_time)
@@ -70,13 +90,15 @@ program structural_matrix_generator
     call write_simulation_metadata(file_id)
 
     ! Limpiar
-    call close_hdf5_file(file_id)
-    call close_hdf5()
+    if (.not. benchmark_mode) then
+        call close_hdf5_file(file_id)
+        call close_hdf5()
 
-    write(*,*) '=============================================='
-    write(*,*) 'Datos guardados en: results/structural_matrices.h5'
-    write(*,*) 'Para visualizar: python python/visualize_results.py'
-    write(*,*) '=============================================='
+        write(*,*) '=============================================='
+        write(*,*) 'Datos guardados en: results/structural_matrices.h5'
+        write(*,*) 'Para visualizar: python python/visualize_results.py'
+        write(*,*) '=============================================='
+    end if
 
 contains
 

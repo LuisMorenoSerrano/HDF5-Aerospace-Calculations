@@ -109,6 +109,19 @@ test-quick: all
 	./$(BUILDDIR)/matrix_generator
 	./$(BUILDDIR)/data_analyzer
 
+# Benchmark OpenMP vs Serial
+benchmark: all openmp
+	@echo "📊 BENCHMARK OPENMP vs SERIAL"
+	@echo "================================"
+	@echo "🔹 Configuración actual: $(shell grep "num_threads" config/simulation_params.conf)"
+	@echo "🔹 Matriz: $(shell grep "n_nodes" config/simulation_params.conf | head -1)"
+	@echo ""
+	@echo "🕐 Serial (sin OpenMP):"
+	@time ./$(BUILDDIR)/matrix_generator 2>&1 | grep -E "(Tiempo|threads)"
+	@echo ""
+	@echo "🚀 OpenMP (paralelo):"
+	@time ./$(BUILDDIR)/matrix_generator_omp 2>&1 | grep -E "(Tiempo|threads)"
+
 # Benchmark de rendimiento
 benchmark: all
 	@echo "📊 Ejecutando benchmark..."
