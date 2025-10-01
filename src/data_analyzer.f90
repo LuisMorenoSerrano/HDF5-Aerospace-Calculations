@@ -4,6 +4,7 @@
 ! =============================================================================
 program hdf5_data_analyzer
     use hdf5_utils
+    !$ use omp_lib
     implicit none
 
     ! Variables ligeras (solo vectores)
@@ -20,6 +21,9 @@ program hdf5_data_analyzer
     write(*,*) '=============================================='
     write(*,*) '  ANALIZADOR EFICIENTE DATOS AEROESPACIALES'
     write(*,*) '=============================================='
+
+    ! Mostrar información OpenMP
+    !$ write(*,'(A,I0,A)') ' OpenMP: Usando ', omp_get_max_threads(), ' threads'
 
     ! Inicializar HDF5 y abrir archivo
     call init_hdf5()
@@ -57,12 +61,24 @@ contains
     ! Analizar respuesta estructural (solo con vectores)
     ! -------------------------------------------------------------------------
     subroutine analyze_structural_response()
+        integer :: i
+        real(8) :: temp_sum
+        
         write(*,*)
         write(*,*) '--- ANÁLISIS DE RESPUESTA ESTRUCTURAL ---'
 
+        ! Paralelizar cálculos con vectores
         max_displacement = maxval(abs(displacement))
-        rms_displacement = sqrt(sum(displacement**2) / real(n_dof))
         max_force = maxval(abs(force_vector))
+        
+        ! Cálculo RMS paralelo
+        temp_sum = 0.0d0
+        !$OMP PARALLEL DO REDUCTION(+:temp_sum)
+        do i = 1, n_dof
+            temp_sum = temp_sum + displacement(i)**2
+        end do
+        !$OMP END PARALLEL DO
+        rms_displacement = sqrt(temp_sum / real(n_dof))
 
         write(*,'(A,ES12.4,A)') 'Desplazamiento máximo: ', max_displacement, ' m'
         write(*,'(A,ES12.4,A)') 'Desplazamiento RMS:    ', rms_displacement, ' m'
@@ -131,12 +147,14 @@ contains
 
         ! Aquí necesitaríamos funciones para leer submatrices específicas
         ! Por simplicidad, estimamos valores basados en el patrón del generador
+        !$OMP PARALLEL DO PRIVATE(local_i)
         do i = 1, block_size
             local_i = start_idx + i - 1
             ! Simular valores diagonales basados en el patrón del generador
             diagonal_k(local_i) = 7.0d10 * (1.0d0 + 0.1d0 * sin(real(local_i) / 1000.0d0))
             diagonal_m(local_i) = 0.054d0
         end do
+        !$OMP END PARALLEL DO
 
         deallocate(block_k, block_m)
     end subroutine read_diagonal_block

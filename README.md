@@ -14,6 +14,7 @@ Este proyecto demuestra el uso eficiente de HDF5 con Fortran para cálculos masi
 - 💾 **Almacenamiento eficiente**: HDF5 con compresión (3-5x reducción de tamaño)
 - 📊 **Visualización avanzada**: Python con análisis modal y gráficos técnicos
 - 🚀 **Rendimiento optimizado**: Chunking, compresión y procesamiento paralelo
+- ⚡ **Paralelización OpenMP**: Generación de matrices multi-thread configurable
 
 ## 🏛️ Estructura del Proyecto
 
@@ -123,6 +124,34 @@ density = 2700.0            # Densidad [kg/m³]
 poisson_ratio = 0.33        # Coeficiente Poisson
 zone_stiffness_factor = 2.5  # Factor heterogeneidad rigidez
 zone_mass_factor = 1.8       # Factor heterogeneidad masa
+
+# Paralelización OpenMP
+num_threads = 4             # Número de threads (0 = automático)
+```
+
+### Paralelización OpenMP
+
+Compila y ejecuta con paralelización multi-thread:
+
+```bash
+# Compilar versión OpenMP
+make openmp
+
+# Ejecutar con paralelización (configurable en archivo .conf)
+./build/matrix_generator_omp
+./build/data_analyzer_omp
+
+# Benchmark de rendimiento
+./scripts/benchmark_openmp.sh
+
+# Modo benchmark puro (solo cálculo, sin I/O)
+./build/matrix_generator_omp --benchmark
+```
+
+**Configuración optimizada por hardware:**
+- **4 cores**: `num_threads = 4` (recomendado)
+- **8+ cores**: `num_threads = 8` 
+- **Auto**: `num_threads = 0` (detecta automáticamente)
 ```
 
 ### Matrices Grandes
@@ -166,12 +195,22 @@ pip3 install --user vtk pyvista plotly dash
 - **Compresión HDF5**: 70-80% reducción vs raw binary
 - **Memoria pico**: ~8GB para matrices 100k DOF
 
+### Rendimiento OpenMP
+
+**30k DOF (5000 nodos) - Solo cálculo de matrices:**
+- **1 thread**: 1.58s generación
+- **2 threads**: 1.48s generación (1.06x speedup)
+- **4 threads**: 1.59s generación (0.99x speedup)
+
+*Nota: Para matrices más grandes (>100k DOF) el speedup es más significativo*
+
 ### Mejoras Implementadas
 
 - 🔧 **Configuración externa**: Sin recompilación para cambiar parámetros
 - ⚡ **Rendimiento optimizado**: 100x reducción en uso de memoria (0.27GB vs 27GB)
 - 📈 **Análisis modal mejorado**: Frecuencias diferenciadas (factor dispersión 3.0x)
 - 📊 **Visualización avanzada**: 4 subgráficos con métricas aeroespaciales
+- 🚀 **Paralelización OpenMP**: Multi-thread configurable para generación de matrices
 
 ### Escalabilidad
 

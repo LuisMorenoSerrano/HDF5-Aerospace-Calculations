@@ -5,6 +5,7 @@
 program structural_matrix_generator
     use hdf5_utils
     use config_reader
+    !$ use omp_lib
     implicit none
 
     ! Variables
@@ -14,6 +15,8 @@ program structural_matrix_generator
     real(8), allocatable :: force_vector(:)
     real(8), allocatable :: displacement(:)
     integer(HID_T) :: file_id
+    logical :: benchmark_mode = .false.
+    character(len=255) :: arg
 
     ! Información de timing
     real :: start_time, end_time
@@ -22,14 +25,29 @@ program structural_matrix_generator
     write(*,*) '   GENERADOR DE MATRICES AEROESPACIALES'
     write(*,*) '=============================================='
 
+    ! Verificar argumentos de línea de comandos
+    if (command_argument_count() > 0) then
+        call get_command_argument(1, arg)
+        if (trim(arg) == '--benchmark') then
+            benchmark_mode = .true.
+            write(*,*) '🚀 MODO BENCHMARK: Solo generación (sin I/O)'
+        end if
+    end if
+
     ! Leer configuración
     call read_config_file('config/simulation_params.conf', config)
 
-    ! Inicializar HDF5
-    call init_hdf5()
+    ! Configurar OpenMP
+    !$ if (config%num_threads > 0) then
+    !$     call omp_set_num_threads(config%num_threads)
+    !$ end if
+    !$ write(*,'(A,I0,A,I0,A)') ' OpenMP: ', omp_get_max_threads(), ' threads de ', omp_get_num_procs(), ' disponibles'
 
-    ! Crear archivo de salida
-    call create_hdf5_file(config%output_file, file_id)
+    ! Inicializar HDF5 solo si no es modo benchmark
+    if (.not. benchmark_mode) then
+        call init_hdf5()
+        call create_hdf5_file(config%output_file, file_id)
+    end if
 
     ! Generar matrices
     call cpu_time(start_time)
@@ -41,6 +59,15 @@ program structural_matrix_generator
 
     call cpu_time(end_time)
     write(*,'(A,F8.2,A)') ' Tiempo generación: ', end_time - start_time, ' segundos'
+
+    ! Si es modo benchmark, terminar aquí
+    if (benchmark_mode) then
+        write(*,*) '=============================================='  
+        write(*,*) '🚀 BENCHMARK COMPLETADO'
+        write(*,'(A,F8.2,A)') ' Tiempo total generación: ', end_time - start_time, ' segundos'
+        write(*,*) '=============================================='
+        stop
+    end if
 
     ! Guardar en HDF5
     call cpu_time(start_time)
@@ -63,13 +90,15 @@ program structural_matrix_generator
     call write_simulation_metadata(file_id)
 
     ! Limpiar
-    call close_hdf5_file(file_id)
-    call close_hdf5()
+    if (.not. benchmark_mode) then
+        call close_hdf5_file(file_id)
+        call close_hdf5()
 
-    write(*,*) '=============================================='
-    write(*,*) 'Datos guardados en: results/structural_matrices.h5'
-    write(*,*) 'Para visualizar: python python/visualize_results.py'
-    write(*,*) '=============================================='
+        write(*,*) '=============================================='
+        write(*,*) 'Datos guardados en: results/structural_matrices.h5'
+        write(*,*) 'Para visualizar: python python/visualize_results.py'
+        write(*,*) '=============================================='
+    end if
 
 contains
 
@@ -94,6 +123,7 @@ contains
         band_width = min(cfg%bandwidth, n)
 
         ! Generar estructura aeroespacial heterogénea con diferentes zonas
+        !$OMP PARALLEL DO PRIVATE(j, k_local) SCHEDULE(DYNAMIC)
         do i = 1, n
             ! Crear zonas con diferentes propiedades (fuselaje, alas, cola)
             if (i <= n/3) then
@@ -124,6 +154,7 @@ contains
                 K(j,i) = K(i,j)  ! Simetría
             end do
         end do
+        !$OMP END PARALLEL DO
     end subroutine generate_stiffness_matrix
 
     ! -------------------------------------------------------------------------
@@ -146,6 +177,7 @@ contains
         area_element = 0.01d0  ! m² por elemento base (1cm²)
 
         ! Matriz de masa con distribución variable por zonas
+        !$OMP PARALLEL DO PRIVATE(m_local) SCHEDULE(DYNAMIC)
         do i = 1, n
             if (i <= n/3) then
                 ! Fuselaje: mayor masa (equipos, pasajeros)
@@ -176,6 +208,7 @@ contains
                 end if
             end if
         end do
+        !$OMP END PARALLEL DO
     end subroutine generate_mass_matrix
 
     ! -------------------------------------------------------------------------
@@ -194,6 +227,7 @@ contains
         n_nodes_equiv = n / 6  ! 6 DOF por nodo
 
         ! Simulación de carga de presión aerodinámica
+        !$OMP PARALLEL DO PRIVATE(x, y, pressure) SCHEDULE(STATIC)
         do i = 1, n
             ! Posición X normalizada
             x = real(mod(i-1, int(sqrt(real(n_nodes_equiv))))) / sqrt(real(n_nodes_equiv))
@@ -204,6 +238,7 @@ contains
             pressure = 1000.0d0 * (1.0d0 + 0.5d0 * x + 0.3d0 * sin(10.0d0 * x) * cos(8.0d0 * y))
             F(i) = pressure * 0.01d0  ! Fuerza por nodo
         end do
+        !$OMP END PARALLEL DO
     end subroutine generate_force_vector
 
     ! -------------------------------------------------------------------------
