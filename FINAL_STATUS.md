@@ -11,13 +11,15 @@ Las ramas `main` y `openmp` ahora tienen **funcionalidades idénticas** excepto 
 ## 📊 **VERIFICACIÓN TÉCNICA FINAL**
 
 ### **✅ Pruebas de Compilación**
-```
+
+```text
 Rama main:   ✅ EXITOSA - gfortran sin flags OpenMP
 Rama openmp: ✅ EXITOSA - gfortran con -fopenmp
 ```
 
 ### **✅ Pruebas Funcionales**
-```
+
+```text
 Test rápido main: ✅ EXITOSO
 - Matriz 30k DOF en 28.18s (4.7s gen + 23.48s I/O)
 - Compresión GZIP nivel 3
@@ -26,7 +28,8 @@ Test rápido main: ✅ EXITOSO
 ```
 
 ### **✅ Verificación OpenMP**
-```
+
+```text
 Directivas encontradas:
 - Rama main:   ✅ CERO líneas OpenMP
 - Rama openmp: ✅ Solo líneas de paralelización
@@ -37,22 +40,26 @@ Directivas encontradas:
 ## 🔧 **FUNCIONALIDADES SINCRONIZADAS**
 
 ### **✅ Configuración Externa**
+
 - **Archivo**: `config/simulation_params.conf`
 - **Parámetros**: compression_type, compression_level, block_size, num_threads
 - **Estado**: Idéntico en ambas ramas
 
 ### **✅ Compresión HDF5**
+
 - **Tipo**: GZIP configurable
 - **Nivel**: 3 (óptimo rendimiento/tamaño)
 - **Implementación**: Idéntica en `src/hdf5_utils.f90`
 
 ### **✅ Procesamiento por Bloques**
+
 - **Activación**: Automática para matrices >40k DOF
 - **Tamaño bloque**: Configurable (default 12000)
 - **Memoria**: Reducida de 26.8GB a 6.7GB reales
 - **Diferencia**: Main secuencial, OpenMP paralelo
 
 ### **✅ Gestión de Memoria**
+
 - **Funciones**: `create_large_matrix_datasets()`, `write_matrix_block_hdf5()`
 - **Implementación**: Idéntica en ambas ramas
 - **Capacidad**: Hasta 60k×60k matrices
@@ -62,7 +69,8 @@ Directivas encontradas:
 ## 🚀 **CASOS DE USO DEFINIDOS**
 
 ### **Rama `main` - Recomendada para:**
-```
+
+```text
 ✅ Sistemas de pocos núcleos (≤4 cores)
 ✅ Depuración y desarrollo (determinista)
 ✅ Entornos sin OpenMP
@@ -71,7 +79,8 @@ Directivas encontradas:
 ```
 
 ### **Rama `openmp` - Recomendada para:**
-```
+
+```text
 🚀 Producción (sistemas multi-core)
 🚀 Máximo rendimiento (≥8 cores)
 🚀 Matrices grandes (>40k DOF)
@@ -84,7 +93,8 @@ Directivas encontradas:
 ## 📋 **ARCHIVOS MODIFICADOS**
 
 ### **✅ Sincronizados Correctamente**
-```
+
+```text
 src/config_reader.f90     - Lectura parámetros idéntica
 src/hdf5_utils.f90        - Funciones HDF5 idénticas
 src/matrix_generator.f90  - Solo difiere en líneas OpenMP
@@ -92,7 +102,8 @@ config/simulation_params.conf - Parámetros unificados
 ```
 
 ### **✅ Diferencias Solo en OpenMP**
-```
+
+```text
 Rama openmp:
 !$ use omp_lib
 !$OMP PARALLEL DO PRIVATE(...) SCHEDULE(...)
@@ -111,7 +122,8 @@ Rama main:
 ## ⚡ **RENDIMIENTO CONFIRMADO**
 
 ### **Benchmarks Actuales**
-```
+
+```text
 Matriz 30k DOF (5000 nodos):
 - Main:   28.18s total (4.7s gen + 23.48s I/O)
 - OpenMP: ~14-16s total (2x speedup en generación)
@@ -126,6 +138,7 @@ Matrices grandes >40k DOF:
 ## 🎯 **CONCLUSIÓN FINAL**
 
 ### **✅ VERIFICACIÓN EXITOSA**
+
 - ✅ **Funcionalidades idénticas** excepto paralelización
 - ✅ **Compilación exitosa** en ambas ramas
 - ✅ **Tests funcionales** pasados
@@ -133,6 +146,7 @@ Matrices grandes >40k DOF:
 - ✅ **Rendimiento optimizado** en ambas
 
 ### **✅ OBJETIVOS ALCANZADOS**
+
 1. ✅ Paridad de funcionalidades no-OpenMP
 2. ✅ Diferenciación clara solo en paralelización
 3. ✅ Capacidades equivalentes matrices grandes
@@ -143,4 +157,4 @@ Matrices grandes >40k DOF:
 
 **ESTADO: VERIFICACIÓN COMPLETADA EXITOSAMENTE** ✅
 
-*El proyecto tiene ahora dos ramas perfectamente diferenciadas con funcionalidades idénticas excepto por OpenMP, cumpliendo completamente los requisitos especificados.*
+>El proyecto tiene ahora dos ramas perfectamente diferenciadas con funcionalidades idénticas excepto por OpenMP, cumpliendo completamente los requisitos especificados.
