@@ -1,0 +1,29 @@
+#!/bin/bash
+# =============================================================================
+# Inicialización de Bash para el proyecto HDF5-Aerospace-Calculations
+# Este archivo se carga antes del activate_env.sh para asegurar virtualenvwrapper
+# =============================================================================
+
+# Cargar .bashrc del usuario si existe
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+
+# Asegurar que virtualenvwrapper esté disponible
+if [ -f /usr/local/bin/virtualenvwrapper.sh ]; then
+    source /usr/local/bin/virtualenvwrapper.sh
+elif [ -f ~/.local/bin/virtualenvwrapper.sh ]; then
+    source ~/.local/bin/virtualenvwrapper.sh
+elif [ -f /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]; then
+    source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+fi
+
+# Configurar WORKON_HOME si no está definido
+if [ -z "$WORKON_HOME" ]; then
+    export WORKON_HOME="$HOME/.virtualenvs"
+fi
+
+# Ahora cargar el entorno específico del proyecto
+if [ -f "${BASH_SOURCE%/*}/activate_env.sh" ]; then
+    source "${BASH_SOURCE%/*}/activate_env.sh"
+fi

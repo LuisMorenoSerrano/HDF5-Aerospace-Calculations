@@ -40,7 +40,7 @@
     "terminal.integrated.profiles.linux": {
         "bash": {
             "path": "bash",
-            "args": ["--init-file", "${workspaceFolder}/activate_env.sh"]
+            "args": ["--init-file", "${workspaceFolder}/.bash_project"]
         }
     },
 

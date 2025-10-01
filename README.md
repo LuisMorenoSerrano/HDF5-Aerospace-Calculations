@@ -53,20 +53,31 @@ make all
 
 ### 🐍 Entorno Virtual Automático
 
-El proyecto activa automáticamente el entorno virtual Python `general`:
+El proyecto activa automáticamente el entorno virtual Python `general` usando `workon`:
 
 ```bash
-# En VS Code: Terminal se activa automáticamente
+# En VS Code: Terminal se activa automáticamente con workon general
 # En terminal manual:
-source activate_env.sh
+source activate_env.sh          # Usa workon general automáticamente
+# o alternativamente:
+source .bash_project            # Carga entorno completo
 
 # Comandos rápidos disponibles:
 build          # make all
 test-quick     # make test-quick
 visualize      # python3 python/visualize_results.py --modal
+analyze        # ./build/data_analyzer
+generate       # ./build/matrix_generator
 ```
 
-### Test Completo
+#### 🔧 Configuración Terminal VS Code
+
+El terminal integrado ejecuta automáticamente:
+
+- Carga `virtualenvwrapper` si está disponible
+- Ejecuta `workon general` para activar el entorno
+- Configura aliases y variables del proyecto
+- Muestra estado completo del entorno### Test Completo
 
 ```bash
 # Ejecutar ejemplo completo (~2 min)

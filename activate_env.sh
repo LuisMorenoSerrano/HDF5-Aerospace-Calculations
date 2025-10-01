@@ -19,10 +19,28 @@ if [ -f ".envrc" ]; then
 else
     echo "⚠️  Archivo .envrc no encontrado, configuración básica..."
 
-    # Activación básica solo del entorno Python
-    if [ -d "/home/lmoreno/.virtualenvs/general" ]; then
-        source /home/lmoreno/.virtualenvs/general/bin/activate
-        echo "🐍 Entorno virtual 'general' activado"
+    # Intentar activación con virtualenvwrapper (workon)
+    if declare -f workon >/dev/null 2>&1; then
+        # workon está disponible como función
+        workon general 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo "🐍 Entorno virtual 'general' activado con workon"
+        else
+            echo "⚠️  workon general falló, intentando activación directa..."
+            if [ -d "/home/lmoreno/.virtualenvs/general" ]; then
+                source /home/lmoreno/.virtualenvs/general/bin/activate
+                echo "🐍 Entorno virtual 'general' activado directamente"
+            fi
+        fi
+    else
+        # Fallback: activación directa sin virtualenvwrapper
+        echo "ℹ️  workon no disponible, usando activación directa..."
+        if [ -d "/home/lmoreno/.virtualenvs/general" ]; then
+            source /home/lmoreno/.virtualenvs/general/bin/activate
+            echo "🐍 Entorno virtual 'general' activado directamente"
+        else
+            echo "❌ No se pudo activar entorno 'general'"
+        fi
     fi
 fi
 
