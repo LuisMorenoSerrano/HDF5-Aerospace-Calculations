@@ -30,6 +30,10 @@ __pycache__/
 *.bak
 *.backup
 *.orig
+*backup*
+temp_*
+*.patch
+*.rej
 
 # Archivos del sistema
 .DS_Store

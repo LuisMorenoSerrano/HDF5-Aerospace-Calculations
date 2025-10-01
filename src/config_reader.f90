@@ -32,9 +32,11 @@ module config_reader
         ! Configuración de salida
         character(len=200) :: output_file = "results/structural_matrices.h5"
         integer :: compression_level = 6
+        character(len=20) :: compression_type = "gzip"  ! "gzip", "blosc", "lz4"
 
         ! Configuración de paralelización
         integer :: num_threads = 4
+        integer :: block_size = 8000        ! Tamaño de bloque para matrices grandes
 
         ! Propiedades calculadas
         integer :: n_dof = 0
@@ -137,8 +139,12 @@ contains
             end if
         case ('compression_level')
             read(value, *) config%compression_level
+        case ('compression_type')
+            config%compression_type = trim(value)
         case ('num_threads')
             read(value, *) config%num_threads
+        case ('block_size')
+            read(value, *) config%block_size
         end select
     end subroutine process_parameter
 

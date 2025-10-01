@@ -28,17 +28,21 @@ MODULES = $(BUILDDIR)/hdf5_utils.mod $(BUILDDIR)/config_reader.mod
 EXECUTABLES = $(BUILDDIR)/matrix_generator $(BUILDDIR)/data_analyzer
 EXECUTABLES_OMP = $(BUILDDIR)/matrix_generator_omp $(BUILDDIR)/data_analyzer_omp
 
-# Regla por defecto
-.PHONY: all clean debug install test help openmp
+# Regla por defecto en rama OpenMP: usar versiones paralelas
+.PHONY: all clean debug install test help openmp serial
 
-all: directories $(EXECUTABLES)
-	@echo "✅ Compilación completa"
-	@echo "Ejecuta: make test"
-
-# Versión con OpenMP
-openmp: directories $(EXECUTABLES_OMP)
-	@echo "✅ Compilación OpenMP completa"
+# Por defecto en rama openmp: compilar versiones OpenMP
+all: directories $(EXECUTABLES_OMP)
+	@echo "✅ Compilación OpenMP completa (rama openmp)"
 	@echo "Ejecuta: ./build/matrix_generator_omp"
+
+# Alias para claridad
+openmp: all
+
+# Versiones seriales (para compatibilidad/debug)
+serial: directories $(EXECUTABLES)
+	@echo "✅ Compilación serial completa"
+	@echo "Ejecuta: make test"
 
 # Crear directorios
 directories:
@@ -92,13 +96,13 @@ install:
 	pip3 install --user numpy h5py matplotlib scipy seaborn
 	@chmod +x $(PYTHONDIR)/visualize_results.py
 
-# Ejecutar test completo
+# Ejecutar test completo con OpenMP (por defecto en rama openmp)
 test: all install
-	@echo "🧪 Ejecutando test completo..."
-	@echo "1️⃣  Generando matrices..."
-	./$(BUILDDIR)/matrix_generator
-	@echo "2️⃣  Analizando datos..."
-	./$(BUILDDIR)/data_analyzer
+	@echo "🧪 Ejecutando test completo con OpenMP..."
+	@echo "1️⃣  Generando matrices (OpenMP)..."
+	./$(BUILDDIR)/matrix_generator_omp
+	@echo "2️⃣  Analizando datos (OpenMP)..."
+	./$(BUILDDIR)/data_analyzer_omp
 	@echo "3️⃣  Generando visualizaciones..."
 	python3 $(PYTHONDIR)/visualize_results.py
 	@echo "✅ Test completado. Ver archivos en $(RESULTSDIR)/"
@@ -122,9 +126,9 @@ benchmark: all openmp
 	@echo "🚀 OpenMP (paralelo):"
 	@time ./$(BUILDDIR)/matrix_generator_omp 2>&1 | grep -E "(Tiempo|threads)"
 
-# Benchmark de rendimiento
-benchmark: all
-	@echo "📊 Ejecutando benchmark..."
+# Benchmark de rendimiento simple
+benchmark-simple: all
+	@echo "📊 Ejecutando benchmark simple..."
 	@echo "Midiendo tiempo de generación..."
 	time ./$(BUILDDIR)/matrix_generator
 	@echo "Midiendo tiempo de análisis..."
