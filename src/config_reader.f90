@@ -32,6 +32,11 @@ module config_reader
         ! Configuración de salida
         character(len=200) :: output_file = "results/structural_matrices.h5"
         integer :: compression_level = 6
+        character(len=20) :: compression_type = "gzip"  ! "gzip", "blosc", "lz4"
+
+        ! Configuración de procesamiento
+        integer :: num_threads = 4         ! Para compatibilidad (no usado en main)
+        integer :: block_size = 8000       ! Tamaño de bloque para matrices grandes
 
         ! Propiedades calculadas
         integer :: n_dof = 0
@@ -134,6 +139,12 @@ contains
             end if
         case ('compression_level')
             read(value, *) config%compression_level
+        case ('compression_type')
+            config%compression_type = trim(value)
+        case ('num_threads')
+            read(value, *) config%num_threads  ! Para compatibilidad
+        case ('block_size')
+            read(value, *) config%block_size
         end select
     end subroutine process_parameter
 
@@ -153,6 +164,7 @@ contains
         write(*,*) 'Módulo Young:       ', config%young_modulus, ' Pa'
         write(*,*) 'Densidad:           ', config%density, ' kg/m³'
         write(*,*) 'Archivo salida:     ', trim(config%output_file)
+        write(*,*) 'Threads config:     ', config%num_threads, ' (compatibilidad)'
         write(*,*) 'Memoria aprox:      ', (real(config%n_dof,8)**2 * 8.0d0) / (1024.0d0**3), ' GB'
         write(*,*) '=============================================='
     end subroutine print_config

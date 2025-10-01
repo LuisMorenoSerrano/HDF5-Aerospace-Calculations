@@ -31,33 +31,50 @@ program structural_matrix_generator
     ! Crear archivo de salida
     call create_hdf5_file(config%output_file, file_id)
 
-    ! Generar matrices
-    call cpu_time(start_time)
-    write(*,*) 'Generando matrices...'
+    ! Decidir estrategia basada en el tamaño
+    if (config%n_dof > 40000) then
+        ! Matrices grandes: procesamiento por bloques para optimizar memoria
+        write(*,*) 'Matrices grandes detectadas. Usando procesamiento por bloques...'
+        call cpu_time(start_time)
 
-    call generate_stiffness_matrix(stiffness_matrix, config)
-    call generate_mass_matrix(mass_matrix, config)
-    call generate_force_vector(force_vector, config%n_dof)
+        call generate_matrices_block_wise(file_id, config)
+        call generate_force_vector(force_vector, config%n_dof)
 
-    call cpu_time(end_time)
-    write(*,'(A,F8.2,A)') ' Tiempo generación: ', end_time - start_time, ' segundos'
+        call cpu_time(end_time)
+        write(*,'(A,F8.2,A)') ' Tiempo generación (bloques): ', end_time - start_time, ' segundos'
 
-    ! Guardar en HDF5
-    call cpu_time(start_time)
-    write(*,*) 'Guardando en HDF5...'
+        ! Guardar vector de fuerzas
+        call write_vector_real8(file_id, '/vectors/force', force_vector)
 
-    call write_matrix_real8(file_id, '/matrices/stiffness', stiffness_matrix)
-    call write_matrix_real8(file_id, '/matrices/mass', mass_matrix)
-    call write_vector_real8(file_id, '/vectors/force', force_vector)
+    else
+        ! Matrices normales: método tradicional en memoria
+        write(*,*) 'Generando matrices en memoria...'
+        call cpu_time(start_time)
 
-    call cpu_time(end_time)
-    write(*,'(A,F8.2,A)') ' Tiempo escritura: ', end_time - start_time, ' segundos'
+        call generate_stiffness_matrix(stiffness_matrix, config)
+        call generate_mass_matrix(mass_matrix, config)
+        call generate_force_vector(force_vector, config%n_dof)
 
-    ! Realizar cálculo de ejemplo: K * u = F (sistema simplificado)
-    write(*,*) 'Realizando cálculo de ejemplo...'
-    call solve_example_system(stiffness_matrix, force_vector, displacement)
+        call cpu_time(end_time)
+        write(*,'(A,F8.2,A)') ' Tiempo generación: ', end_time - start_time, ' segundos'
 
-    call write_vector_real8(file_id, '/results/displacement', displacement)
+        ! Guardar en HDF5 con compresión optimizada
+        call cpu_time(start_time)
+        write(*,'(A,A,A,I0,A)') 'Guardando en HDF5 con ', trim(config%compression_type), &
+                               ' nivel ', config%compression_level, '...'
+
+        call write_matrix_real8(file_id, '/matrices/stiffness', stiffness_matrix, config%compression_level)
+        call write_matrix_real8(file_id, '/matrices/mass', mass_matrix, config%compression_level)
+        call write_vector_real8(file_id, '/vectors/force', force_vector)
+
+        call cpu_time(end_time)
+        write(*,'(A,F8.2,A)') ' Tiempo escritura: ', end_time - start_time, ' segundos'
+
+        ! Realizar cálculo de ejemplo para matrices normales
+        write(*,*) 'Realizando cálculo de ejemplo...'
+        call solve_example_system(stiffness_matrix, force_vector, displacement)
+        call write_vector_real8(file_id, '/results/displacement', displacement)
+    end if
 
     ! Escribir metadatos
     call write_simulation_metadata(file_id)
@@ -244,5 +261,138 @@ contains
         write(*,*) 'Metadatos guardados: material, geometría, condiciones'
         write(*,*) 'File ID usado:', hdf5_file_id
     end subroutine write_simulation_metadata
+
+    ! -------------------------------------------------------------------------
+    ! Generar matrices por bloques para optimizar memoria (matrices grandes)
+    ! -------------------------------------------------------------------------
+    subroutine generate_matrices_block_wise(file_id, config)
+        integer(HID_T), intent(in) :: file_id
+        type(simulation_config), intent(in) :: config
+
+        real(8), allocatable :: stiffness_block(:,:), mass_block(:,:)
+        integer :: n, n_blocks, block_i, block_j, BLOCK_SIZE
+        integer :: start_i, end_i, start_j, end_j, actual_size_i, actual_size_j
+        real :: block_start_time, block_end_time
+        real(8) :: block_memory_gb
+
+        n = config%n_dof
+        BLOCK_SIZE = config%block_size
+        n_blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE  ! Ceiling division
+        block_memory_gb = (real(BLOCK_SIZE,8)**2 * 8.0d0) / (1024.0d0**3)
+
+        write(*,'(A,I0,A,I0,A,I0)') ' Procesando matriz ', n, 'x', n, ' en bloques de ', BLOCK_SIZE
+        write(*,'(A,F5.2,A)') ' Memoria por bloque: ', block_memory_gb, ' GB'
+        write(*,'(A,I0,A)') ' Total bloques: ', n_blocks, 'x', n_blocks
+
+        ! Crear datasets HDF5 con dimensiones completas
+        call create_large_matrix_datasets(file_id, n, config%compression_level)
+
+        ! Procesar por bloques secuencialmente (sin OpenMP)
+        do block_i = 1, n_blocks
+            call cpu_time(block_start_time)
+
+            do block_j = 1, n_blocks
+                ! Calcular índices del bloque
+                start_i = (block_i - 1) * BLOCK_SIZE + 1
+                end_i = min(block_i * BLOCK_SIZE, n)
+                start_j = (block_j - 1) * BLOCK_SIZE + 1
+                end_j = min(block_j * BLOCK_SIZE, n)
+
+                actual_size_i = end_i - start_i + 1
+                actual_size_j = end_j - start_j + 1
+
+                ! Allocar bloques
+                allocate(stiffness_block(actual_size_i, actual_size_j))
+                allocate(mass_block(actual_size_i, actual_size_j))
+
+                ! Generar contenido del bloque
+                call generate_matrix_block(stiffness_block, mass_block, &
+                                         start_i, end_i, start_j, end_j, config)
+
+                ! Escribir bloques a HDF5
+                call write_matrix_block_hdf5(file_id, '/matrices/stiffness', stiffness_block, start_i, start_j)
+                call write_matrix_block_hdf5(file_id, '/matrices/mass', mass_block, start_i, start_j)
+
+                ! Liberar memoria del bloque
+                deallocate(stiffness_block, mass_block)
+            end do
+
+            call cpu_time(block_end_time)
+            write(*,'(A,I0,A,I0,A,F6.2,A)') '   Fila de bloques ', block_i, ' de ', n_blocks, &
+                  ' completada en ', block_end_time - block_start_time, 's'
+        end do
+
+        write(*,*) '✅ Generación por bloques completada'
+    end subroutine generate_matrices_block_wise
+
+    ! -------------------------------------------------------------------------
+    ! Generar contenido de un bloque específico de las matrices
+    ! -------------------------------------------------------------------------
+    subroutine generate_matrix_block(K_block, M_block, start_i, end_i, start_j, end_j, config)
+        real(8), intent(out) :: K_block(:,:), M_block(:,:)
+        integer, intent(in) :: start_i, end_i, start_j, end_j
+        type(simulation_config), intent(in) :: config
+
+        integer :: i, j, n_total, band_width
+        real(8) :: E, nu, G, rho, t, area_element
+        real(8) :: k_local, m_local
+
+        n_total = config%n_dof
+        E = config%young_modulus
+        nu = config%poisson_ratio
+        rho = config%density
+        t = config%thickness
+        G = E / (2.0d0 * (1.0d0 + nu))
+        band_width = min(config%bandwidth, n_total)
+        area_element = 0.01d0  ! m² por elemento
+
+        ! Inicializar bloques
+        K_block = 0.0d0
+        M_block = 0.0d0
+
+        ! Generar elementos dentro del bloque (sin OpenMP)
+        do i = start_i, end_i
+            do j = start_j, end_j
+                ! Solo generar si está dentro del ancho de banda
+                if (abs(i - j) <= band_width) then
+                    ! Calcular rigidez local con patrones aeroespaciales
+                    if (i <= n_total/3) then
+                        ! Zona fuselaje: más rígida
+                        k_local = E * config%zone1_stiffness_factor * &
+                                 (1.0d0 + 0.5d0 * cos(real(i) * 6.28d0 / (n_total/3)))
+                    else if (i <= 2*n_total/3) then
+                        ! Zona alas: flexible
+                        k_local = E * config%zone2_stiffness_factor * &
+                                 (1.0d0 + 0.8d0 * sin(real(i-n_total/3) * 12.56d0 / (n_total/3)))
+                    else
+                        ! Zona cola: intermedio
+                        k_local = E * config%zone3_stiffness_factor * &
+                                 (1.0d0 + 0.3d0 * sin(real(i-2*n_total/3) * 25.12d0 / (n_total/3)))
+                    end if
+
+                    if (i == j) then
+                        ! Elementos diagonal
+                        K_block(i-start_i+1, j-start_j+1) = k_local
+
+                        ! Masa correspondiente
+                        if (i <= n_total/3) then
+                            m_local = rho * t * area_element * config%zone1_mass_factor * &
+                                     (2.0d0 + 0.5d0 * sin(real(i) * 6.28d0 / (n_total/3)))
+                        else if (i <= 2*n_total/3) then
+                            m_local = rho * t * area_element * config%zone2_mass_factor * &
+                                     (0.8d0 + 1.2d0 * cos(real(i-n_total/3) * 6.28d0 / (n_total/3)))
+                        else
+                            m_local = rho * t * area_element * config%zone3_mass_factor * &
+                                     (0.3d0 + 0.4d0 * sin(real(i-2*n_total/3) * 12.56d0 / (n_total/3)))
+                        end if
+                        M_block(i-start_i+1, j-start_j+1) = m_local
+                    else
+                        ! Elementos off-diagonal (acoplamiento)
+                        K_block(i-start_i+1, j-start_j+1) = -0.3d0 * k_local / band_width
+                    end if
+                end if
+            end do
+        end do
+    end subroutine generate_matrix_block
 
 end program structural_matrix_generator
