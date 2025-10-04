@@ -141,8 +141,8 @@ contains
         ! Configurar propiedades del dataset
         call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
 
-        ! Chunks más grandes para NVMe (mejor para I/O secuencial)
-        chunk_dims = min(dims, [2048_HSIZE_T, 2048_HSIZE_T])  ! Chunks optimizados NVMe
+        ! Chunks optimizados para mejor rendimiento I/O
+        chunk_dims = min(dims, [2048_HSIZE_T, 2048_HSIZE_T])  ! Chunks optimizados
         call h5pset_chunk_f(plist_id, 2, chunk_dims, error)
 
         ! Aplicar compresión solo si compression_level > 0

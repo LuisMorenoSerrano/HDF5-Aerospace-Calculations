@@ -34,7 +34,7 @@ module config_reader
         integer :: compression_level = 6
         character(len=20) :: compression_type = "gzip"  ! "gzip", "blosc", "lz4"
 
-        ! Configuración de paralelización
+        ! Configuración de procesamiento
         integer :: num_threads = 4
         integer :: block_size = 8000       ! Tamaño de bloque para matrices grandes
 
