@@ -81,6 +81,7 @@ contains
 
             key = trim(adjustl(line(1:eq_pos-1)))
             value = trim(adjustl(line(eq_pos+1:)))
+
             ! Eliminar comentarios al final de línea (después de #)
             if (index(value, '#') > 0) then
                 value = trim(value(1:index(value, '#')-1))
