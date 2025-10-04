@@ -20,9 +20,9 @@ program structural_matrix_generator
     ! Información de timing
     real :: start_time, end_time
 
-    write(*,*) '=============================================='
-    write(*,*) '   GENERADOR DE MATRICES AEROESPACIALES'
-    write(*,*) '=============================================='
+    write(*,'(A60)') '============================================================'
+    write(*,'(A60)') '            GENERADOR DE MATRICES AEROESPACIALES            '
+    write(*,'(A60)') '============================================================'
 
     ! Verificar argumentos de línea de comandos
     if (command_argument_count() > 0) then
@@ -51,21 +51,20 @@ program structural_matrix_generator
     ! Decidir estrategia basada en el tamaño
     if (config%n_dof > 40000) then
         ! Matrices grandes: procesamiento por bloques para optimizar memoria
-        write(*,*) 'Matrices grandes detectadas. Usando procesamiento por bloques...'
+        write(*,'(A)', advance='no') 'Matrices grandes detectadas. Usando procesamiento por bloques...'
         call cpu_time(start_time)
 
         call generate_matrices_block_wise(file_id, config)
         call generate_force_vector(force_vector, config%n_dof)
 
         call cpu_time(end_time)
-        write(*,'(A,F8.2,A)') ' Tiempo generación (bloques): ', end_time - start_time, ' segundos'
+        write(*,'(A,F8.2,A)') ' ', end_time - start_time, ' segundos'
 
         ! Guardar vector de fuerzas
         call write_vector_real8(file_id, '/vectors/force', force_vector)
-
     else
         ! Matrices normales: método tradicional en memoria
-        write(*,*) 'Generando matrices en memoria...'
+        write(*,'(A)', advance='no') 'Generando matrices en memoria...     '
         call cpu_time(start_time)
 
         call generate_stiffness_matrix(stiffness_matrix, config)
@@ -73,21 +72,22 @@ program structural_matrix_generator
         call generate_force_vector(force_vector, config%n_dof)
 
         call cpu_time(end_time)
-        write(*,'(A,F8.2,A)') ' Tiempo generación: ', end_time - start_time, ' segundos'
+        write(*,'(A,F8.2,A)') ' ', end_time - start_time, ' segundos'
 
         ! Si es modo benchmark, terminar aquí
         if (benchmark_mode) then
-            write(*,*) '=============================================='
-            write(*,*) '🚀 BENCHMARK COMPLETADO'
+            write(*,'(A60)') '============================================================'
+            write(*,'(A)')   '🚀 BENCHMARK COMPLETADO'
             write(*,'(A,F8.2,A)') ' Tiempo total generación: ', end_time - start_time, ' segundos'
-            write(*,*) '=============================================='
+            write(*,'(A60)') '============================================================'
             stop
         end if
 
         ! Guardar en HDF5 con compresión optimizada
         call cpu_time(start_time)
-        write(*,'(A,A,A,I0,A)') 'Guardando en HDF5 con ', trim(config%compression_type), &
-                               ' nivel ', config%compression_level, '...'
+        write(*,'(A,A,A,I0,A)', advance='no') &
+            'Guardando en HDF5 con ', trim(config%compression_type), &
+            ' nivel ', config%compression_level, '...'
 
         call write_matrix_real8(file_id, '/matrices/stiffness', stiffness_matrix, config%compression_level)
         call write_matrix_real8(file_id, '/matrices/mass', mass_matrix, config%compression_level)
@@ -95,11 +95,11 @@ program structural_matrix_generator
     end if
 
     call cpu_time(end_time)
-    write(*,'(A,F8.2,A)') ' Tiempo escritura: ', end_time - start_time, ' segundos'
+    write(*,'(A,F8.2,A)') ' ', end_time - start_time, ' segundos'
 
-        ! Para matrices grandes por bloques, omitir cálculo de ejemplo (requiere solver especializado)
-        write(*,*) 'Matrices grandes: Omitiendo cálculo de ejemplo (usar solver especializado)'
-        ! call write_vector_real8(file_id, '/results/displacement', displacement)  ! Comentado para matrices grandes
+    ! Para matrices grandes por bloques, omitir cálculo de ejemplo (requiere solver especializado)
+    write(*,'(A)') 'Matrices grandes: Omitiendo cálculo de ejemplo (usar solver especializado)'
+    ! call write_vector_real8(file_id, '/results/displacement', displacement)  ! Comentado para matrices grandes
 
     ! Escribir metadatos
     call write_simulation_metadata(file_id)
@@ -109,10 +109,10 @@ program structural_matrix_generator
         call close_hdf5_file(file_id)
         call close_hdf5()
 
-        write(*,*) '=============================================='
-        write(*,*) 'Datos guardados en: results/structural_matrices.h5'
-        write(*,*) 'Para visualizar: python python/visualize_results.py'
-        write(*,*) '=============================================='
+        write(*,'(A60)') '============================================================'
+        write(*,'(A,A)') 'Datos guardados en: ', trim(config%output_file)
+        write(*,'(A)')   'Para visualizar:    python python/visualize_results.py'
+        write(*,'(A60)') '============================================================'
     end if
 
 contains
@@ -264,8 +264,8 @@ contains
 
         ! Aquí escribirías atributos del archivo
         ! Por simplicidad, solo mostramos el concepto
-        write(*,*) 'Metadatos guardados: material, geometría, condiciones'
-        write(*,*) 'File ID usado:', hdf5_file_id
+    write(*,'(A)')    'Metadatos guardados:   material, geometría, condiciones'
+    write(*,'(A,I0)') 'File ID usado:         ', hdf5_file_id
     end subroutine write_simulation_metadata
 
     ! -------------------------------------------------------------------------
