@@ -35,7 +35,7 @@ module config_reader
         character(len=20) :: compression_type = "gzip"  ! "gzip", "blosc", "lz4"
 
         ! Configuración de procesamiento
-        integer :: num_threads = 4         ! Para compatibilidad (no usado en main)
+        integer :: num_threads = 1         ! Para compatibilidad (no usado en main)
         integer :: block_size = 8000       ! Tamaño de bloque para matrices grandes
 
         ! Propiedades calculadas
@@ -65,7 +65,7 @@ contains
             return
         end if
 
-        write(*,*) '📖 Leyendo configuración desde: ', trim(filename)
+        write(*,*) '📖 Leyendo configuración: ', trim(filename)
 
         do
             read(unit, '(A)', iostat=ios) line
@@ -81,6 +81,10 @@ contains
 
             key = trim(adjustl(line(1:eq_pos-1)))
             value = trim(adjustl(line(eq_pos+1:)))
+            ! Eliminar comentarios al final de línea (después de #)
+            if (index(value, '#') > 0) then
+                value = trim(value(1:index(value, '#')-1))
+            end if
 
             ! Procesar parámetros
             call process_parameter(key, value, config)
@@ -154,19 +158,19 @@ contains
     subroutine print_config(config)
         type(simulation_config), intent(in) :: config
 
-        write(*,*) '=============================================='
-        write(*,*) '         CONFIGURACIÓN CARGADA'
-        write(*,*) '=============================================='
-        write(*,*) 'Nodos:              ', config%n_nodes
-        write(*,*) 'DOF por nodo:       ', config%dof_per_node
-        write(*,*) 'DOF totales:        ', config%n_dof
-        write(*,*) 'Ancho de banda:     ', config%bandwidth
-        write(*,*) 'Módulo Young:       ', config%young_modulus, ' Pa'
-        write(*,*) 'Densidad:           ', config%density, ' kg/m³'
-        write(*,*) 'Archivo salida:     ', trim(config%output_file)
-        write(*,*) 'Threads config:     ', config%num_threads, ' (compatibilidad)'
-        write(*,*) 'Memoria aprox:      ', (real(config%n_dof,8)**2 * 8.0d0) / (1024.0d0**3), ' GB'
-        write(*,*) '=============================================='
+        write(*,'(A60)')            '============================================================'
+        write(*,'(A60)')            '                    CONFIGURACIÓN CARGADA                   '
+        write(*,'(A60)')            '============================================================'
+        write(*,'(A,T17,A)')        'Archivo salida:', trim(config%output_file)
+        write(*,'(A,T17,I8)')       'Nodos:',          config%n_nodes
+        write(*,'(A,T17,I8)')       'DOF por nodo:',   config%dof_per_node
+        write(*,'(A,T17,I8)')       'DOF totales:',    config%n_dof
+        write(*,'(A,T17,I8)')       'Ancho de banda:', config%bandwidth
+        write(*,'(A,T23,ES12.4,A)') 'Módulo Young:',   config%young_modulus, ' Pa'
+        write(*,'(A,T23,ES11.4,A)') 'Densidad:',       config%density, ' kg/m³'
+        write(*,'(A,T17,I8)')       'Threads:',        config%num_threads
+        write(*,'(A,T18,F10.2,A)')  'Memoria aprox:',  (real(config%n_dof,8)**2 * 8.0d0) / (1024.0d0**3), ' GB'
+        write(*,'(A60)')            '============================================================'
     end subroutine print_config
 
 end module config_reader
