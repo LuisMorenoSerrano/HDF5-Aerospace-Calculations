@@ -66,7 +66,7 @@ debug: all
 # Instalar dependencias Python
 install:
 	@echo "📦 Instalando dependencias Python..."
-	pip3 install --user numpy h5py matplotlib scipy seaborn
+	pip3 install numpy h5py matplotlib scipy seaborn
 	@chmod +x $(PYTHONDIR)/visualize_results.py
 
 # Ejecutar test completo
