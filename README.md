@@ -89,6 +89,42 @@ make test
 python3 python/visualize_results.py --modal  # Visualizar (60s)
 ```
 
+## 🌿 Ramas Disponibles
+
+| Rama | Descripción | Rendimiento | Recomendada |
+|------|-------------|-------------|-------------|
+| `openmp` | OpenMP paralelizado (generación multi-thread) | Generación acelerada (~8x) | ✅ Producción en multi-core |
+| `main` | Versión serial (sin directivas OpenMP) | Referencia base y depuración | ⚠️ Comparación / debugging |
+
+```bash
+# Cambiar a rama optimizada (recomendado para multi-core)
+git checkout openmp
+
+# Volver a versión serial (solo para comparar / depurar)
+git checkout main
+```
+
+### Paralelización OpenMP (rama `openmp`)
+
+La paralelización OpenMP está implementada únicamente en la rama `openmp`. Para usarla:
+
+```bash
+# Compilar versión OpenMP (desde rama openmp)
+make openmp
+
+# Ejecutar generador/paralelo (desde rama openmp)
+./build/matrix_generator_omp
+./build/data_analyzer_omp
+
+# Benchmark de rendimiento
+./scripts/benchmark_openmp.sh
+
+# Modo benchmark puro (solo cálculo, sin I/O)
+./build/matrix_generator_omp --benchmark
+```
+
+El parámetro `num_threads` para controlar los hilos aparece en `config/simulation_params.conf` de la rama `openmp`.
+
 ## 📊 Casos de Uso Aeroespaciales
 
 ### 1. Análisis Estructural FEM
