@@ -141,11 +141,8 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Paquetes Python verificados${NC}"
 else
     echo -e "${YELLOW}⚠️  Instalando paquetes Python...${NC}"
-    pip3 install --user numpy h5py matplotlib scipy seaborn
+    pip3 install numpy h5py matplotlib scipy seaborn
 fi
-
-# Hacer ejecutable el script Python
-chmod +x python/visualize_results.py
 
 echo -e "${GREEN}=============================================="
 echo -e "            COMPILACIÓN EXITOSA"
